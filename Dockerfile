@@ -1,35 +1,54 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
-LABEL image.author="poseidon.guy@gmail.com"
+LABEL image.author="heinrichhoza1.02@gmail.com"
 
-RUN apt update && \
-    apt install -y \
+RUN groupadd webrunner \
+ && useradd -ms /bin/bash -g webrunner webrunner
+
+ENV APACHE_LOG_DIR=/var/log/apache2 \
+    APACHE_PID_FILE=/var/run/apache2/apache2.pid \
+    APACHE_RUN_DIR=/var/run/apache2 \
+    APACHE_RUN_USER=webrunner \
+    APACHE_RUN_GROUP=webrunner \
+    APACHE_SERVER_NAME=webrunner
+
+RUN apt update \
+ && apt install -y \
       apache2 \
       apache2-dev \
       apache2-utils \
-      python3.9 \
+      python3.11 \
+      python3.11-venv \
       python3-pip \
       libapache2-mod-wsgi-py3 && \
       apt clean && \
       apt autoremove
 
-RUN mkdir /web
-RUN mkdir /web/api
+RUN echo "" >> /etc/apache2/apache2.conf \
+ && echo "ServerName $APACHE_SERVER_NAME" >> /etc/apache2/apache2.conf \
+ && service apache2 restart
+
+RUN mkdir /web \
+ && mkdir /web/api
 COPY api /web/api
 COPY requirements.txt /web
 
 RUN mkdir /var/log/service
 
 WORKDIR /web/api
+RUN chown webrunner . \
+ && chown webrunner /var/log/service
 
-RUN python3 -m pip install -r /web/requirements.txt
-
-RUN useradd -ms /bin/bash webrunner
-RUN chown webrunner .
-RUN chown webrunner /var/log/service
 USER webrunner
 
-CMD mod_wsgi-express start-server index.py \
+RUN python3 -m venv . \
+ && chmod +x ./bin/activate \
+ && . ./bin/activate \
+ && ./bin/pip3.11 install wheel \
+ && ./bin/pip3.11 install -r /web/requirements.txt
+
+CMD . ./bin/activate \
+ && mod_wsgi-express start-server index.py \
       --log-level debug --log-to-terminal --startup-log \
       --port 8080
 #      --https-port 8443 --https-only \
