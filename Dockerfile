@@ -30,7 +30,6 @@ RUN echo "" >> /etc/apache2/apache2.conf \
 
 RUN mkdir /web \
  && mkdir /web/api
-COPY api /web/api
 COPY requirements.txt /web
 
 RUN mkdir /var/log/service
@@ -46,6 +45,8 @@ RUN python3 -m venv . \
  && . ./bin/activate \
  && ./bin/pip3.11 install wheel \
  && ./bin/pip3.11 install -r /web/requirements.txt
+
+COPY api /web/api
 
 CMD . ./bin/activate \
  && mod_wsgi-express start-server index.py \
